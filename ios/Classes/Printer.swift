@@ -80,10 +80,19 @@ class Printer{
             } else if(FlutterMethodCall.method == "setSettings") {
                 let settingCommand = myArgs?["SettingCommand"] as? NSString
                         self.setSettings(settings: settingCommand!)
-            } else if(FlutterMethodCall.method == "connectToPrinter" || FlutterMethodCall.method == "connectToGenericPrinter" ) {
+            } else if(FlutterMethodCall.method == "connectToPrinter" ) {
                    let address = myArgs?["Address"] as? String
-                DispatchQueue.global(qos: .utility).async { self.connectToSelectPrinter(address: address!)
-                             }
+                DispatchQueue.global(qos: .utility).async {
+                    let ok = self.connectToSelectPrinter(address: address!)
+                    DispatchQueue.main.async { FlutterResult(ok) }
+                }
+            } else if(FlutterMethodCall.method == "connectToGenericPrinter" ) {
+                   let address = myArgs?["Address"] as? String
+                DispatchQueue.global(qos: .utility).async {
+                    self.connectToGenericPrinter(address: address!)
+                    // No synchronous result available; return true to acknowledge call.
+                    DispatchQueue.main.async { FlutterResult(true) }
+                }
             }
         })
     }

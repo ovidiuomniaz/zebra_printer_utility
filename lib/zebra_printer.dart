@@ -100,7 +100,7 @@ class ZebraPrinter {
     _setSettings(Command.mediaType, mediaType);
   }
 
-  Future<void> connectToPrinter(String address) async {
+  Future<bool> connectToPrinter(String address) async {
     if (controller.selectedAddress != null) {
       await disconnect();
       await Future.delayed(Durations.medium1);
@@ -108,10 +108,11 @@ class ZebraPrinter {
     if (controller.selectedAddress == address) {
       await disconnect();
       controller.selectedAddress = null;
-      return;
+      return false;
     }
     controller.selectedAddress = address;
-    return channel.invokeMethod("connectToPrinter", {"Address": address});
+    final bool? ok = await channel.invokeMethod("connectToPrinter", {"Address": address});
+    return ok ?? false;
   }
 
   Future<void> connectToGenericPrinter(String address) async {

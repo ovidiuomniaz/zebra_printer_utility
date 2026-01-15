@@ -302,7 +302,7 @@ public class Printer implements MethodChannel.MethodCallHandler {
     }
 
 
-    public void connectToSelectPrinter(String address) {
+    public boolean connectToSelectPrinter(String address) {
         isZebraPrinter = true;
         setStatus(context.getString(R.string.connecting), context.getString(R.string.connectingColor));
         selectedAddress = null;
@@ -316,6 +316,7 @@ public class Printer implements MethodChannel.MethodCallHandler {
             isBluetoothPrinter = false;
         }
         printer = connect(isBluetoothPrinter);
+        return printer != null && printerConnection != null && printerConnection.isConnected();
     }
 
     public String isPrinterConnect() {
@@ -584,8 +585,8 @@ public class Printer implements MethodChannel.MethodCallHandler {
             setDarkness(darkness);
         } else if (call.method.equals("connectToPrinter")) {
             new Thread(() -> {
-                connectToSelectPrinter(call.argument("Address").toString());
-                ((Activity) context).runOnUiThread(() -> result.success(true));
+                boolean ok = connectToSelectPrinter(call.argument("Address").toString());
+                ((Activity) context).runOnUiThread(() -> result.success(ok));
             }).start();
 
         } else if (call.method.equals("connectToGenericPrinter")) {

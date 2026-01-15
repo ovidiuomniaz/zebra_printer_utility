@@ -95,9 +95,12 @@ ListenableBuilder(
   )
 ```
 
-For connecting to printer, pass ipAddreess for wifi printer or macAddress for bluetooth printer to `connectToPrinter` method.
-```sh
- zebraPrinter.connectToPrinter("192.168.47.50");
+For connecting to printer, pass ipAddreess for wifi printer or macAddress for bluetooth printer to `connectToPrinter` method. From `1.4.43`, this returns `Future<bool>` indicating success.
+```dart
+final ok = await zebraPrinter.connectToPrinter("192.168.47.50");
+if (!ok) {
+  // handle connection failure
+}
 ```
 
 You can set media type between `Lable`, `Journal` and `BlackMark`. You can choose media type by `EnumMediaType`.

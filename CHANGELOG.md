@@ -51,3 +51,4 @@ Applied coding best practices, including proper resource management and context 
 * Add `ZebraStatus` enum and `statusEnum` field to `ZebraDevice`.
 * Normalize native status strings (iOS/Android, localized) into enum.
 * Update controller to keep `status` and `statusEnum` in sync.
+* Android: `connectToPrinter` now returns `true/false` to Flutter based on connection success.
