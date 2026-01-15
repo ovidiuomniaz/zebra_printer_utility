@@ -30,6 +30,14 @@ ZebraStatus zebraStatusFromStrings(String? status,
   if (s.contains('connecting') || s.contains('conectando')) {
     return ZebraStatus.connecting;
   }
+  if (s.contains('ready to print')) {
+    // Treat printer-ready state as connected/ready
+    return ZebraStatus.connected;
+  }
+  if (s.contains('cannot print')) {
+    // Generic error state; surface as disconnected for lack of finer granularity
+    return ZebraStatus.disconnected;
+  }
   if (s.contains('connected') || s.contains('conectado')) {
     return ZebraStatus.connected;
   }

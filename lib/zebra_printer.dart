@@ -150,13 +150,13 @@ class ZebraPrinter {
     channel.invokeMethod("isPrinterConnected");
   }
 
-  Future<String> getCurrentStatus() async {
+  Future<ZebraStatus> getCurrentStatus() async {
     try {
       final String? message = await channel.invokeMethod<String>("getCurrentStatus");
-      return message ?? "";
+      return zebraStatusFromStrings(message);
     } on PlatformException catch (e) {
       if (onDiscoveryError != null) onDiscoveryError!(e.code, e.message);
-      return "";
+      return ZebraStatus.unknown;
     }
   }
 
