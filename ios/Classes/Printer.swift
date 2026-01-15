@@ -93,8 +93,40 @@ class Printer{
                     // No synchronous result available; return true to acknowledge call.
                     DispatchQueue.main.async { FlutterResult(true) }
                 }
+            } else if(FlutterMethodCall.method == "getCurrentStatus") {
+                DispatchQueue.global(qos: .utility).async {
+                    let status = self.getCurrentStatusMessage()
+                    DispatchQueue.main.async { FlutterResult(status) }
+                }
             }
         })
+    }
+
+    func getCurrentStatusMessage() -> String {
+        if self.isZebraPrinter == false {
+            if(self.wifiManager?.connectOK == true){
+                return self.connectedStr
+            } else {
+                return self.disconnectedStr
+            }
+        }
+        guard let conn = self.connection, conn.isConnected() else {
+            return self.disconnectedStr
+        }
+        var error: NSError?
+        if let printer = ZebraPrinterFactory.getInstance(conn, error: &error) {
+            if let ps = printer.getCurrentStatus(&error) {
+                if ps.isReadyToPrint {
+                    return "Ready To Print"
+                } else {
+                    let statusMessage = PrinterStatusMessages(printerStatus: ps)
+                    let messages = statusMessage?.getStatusMessage() as? [String] ?? []
+                    let joined = messages.joined(separator: ";")
+                    return joined.isEmpty ? "Cannot Print." : "Cannot Print: \(joined)"
+                }
+            }
+        }
+        return self.disconnectedStr
     }
 
     func toString() -> String{

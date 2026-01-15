@@ -150,6 +150,16 @@ class ZebraPrinter {
     channel.invokeMethod("isPrinterConnected");
   }
 
+  Future<String> getCurrentStatus() async {
+    try {
+      final String? message = await channel.invokeMethod<String>("getCurrentStatus");
+      return message ?? "";
+    } on PlatformException catch (e) {
+      if (onDiscoveryError != null) onDiscoveryError!(e.code, e.message);
+      return "";
+    }
+  }
+
   void rotate() {
     this.isRotated = !this.isRotated;
   }

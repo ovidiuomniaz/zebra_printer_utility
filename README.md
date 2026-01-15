@@ -128,6 +128,15 @@ For disconnect from printer, use `disconnect` method. For battery saver, disconn
   zebraPrinter.disconnect();
 ```
 
+### Query Current Status
+You can query the printer's native status string (e.g., "Ready To Print" or a detailed reason why it cannot print):
+
+```dart
+final status = await zebraPrinter.getCurrentStatus();
+print('Current status: $status');
+```
+On iOS/Android Zebra printers, this uses the SDK's `getCurrentStatus` under the hood. For generic printers, it falls back to a high-level connected/disconnected string.
+
 ## Device Status Enum
 Starting from `1.4.43`, each discovered/connected `ZebraDevice` also exposes a normalized enum status via `statusEnum` in addition to the raw `status` string.
 

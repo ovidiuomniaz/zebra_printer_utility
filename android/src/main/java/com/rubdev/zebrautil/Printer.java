@@ -27,6 +27,7 @@ import com.zebra.sdk.comm.TcpConnection;
 import com.zebra.sdk.printer.ZebraPrinter;
 import com.zebra.sdk.printer.ZebraPrinterFactory;
 import com.zebra.sdk.printer.ZebraPrinterLanguageUnknownException;
+import com.zebra.sdk.printer.PrinterStatus;
 import com.zebra.sdk.printer.discovery.DiscoveredPrinter;
 import com.zebra.sdk.printer.discovery.NetworkDiscoverer;
 
@@ -593,12 +594,51 @@ public class Printer implements MethodChannel.MethodCallHandler {
             connectToGenericPrinter(call.argument("Address").toString());
         } else if (call.method.equals("stopScan")) {
             stopScan();
+        } else if (call.method.equals("getCurrentStatus")) {
+            new Thread(() -> {
+                String message = getCurrentStatusMessage();
+                ((Activity) context).runOnUiThread(() -> result.success(message));
+            }).start();
         } else if (call.method.equals("getLocateValue")){
             String resourceKey = call.argument("ResourceKey");
             @SuppressLint("DiscouragedApi") int resId = context.getResources().getIdentifier(resourceKey, "string", context.getPackageName());
             result.success(resId == 0 ? "" : context.getString(resId));
         }else {
             result.notImplemented();
+        }
+    }
+
+    private String getCurrentStatusMessage() {
+        try {
+            if (!isZebraPrinter) {
+                // For generic printers, fall back to connection state
+                if (socketmanager != null && socketmanager.getIstate()) {
+                    return context.getString(R.string.connected);
+                }
+                return context.getString(R.string.disconnect);
+            }
+            if (printer == null || printerConnection == null || !printerConnection.isConnected()) {
+                return context.getString(R.string.disconnect);
+            }
+            PrinterStatus ps = printer.getCurrentStatus();
+            if (ps != null && ps.isReadyToPrint) {
+                return "Ready To Print";
+            }
+            ArrayList<String> reasons = new ArrayList<>();
+            if (ps != null) {
+                if (ps.isPaused) reasons.add("Paused");
+                if (ps.isHeadOpen) reasons.add("Head Open");
+                if (ps.isPaperOut) reasons.add("Paper Out");
+                if (ps.isRibbonOut) reasons.add("Ribbon Out");
+                if (ps.isReceiveBufferFull) reasons.add("Receive Buffer Full");
+            }
+            String joined = String.join(";", reasons);
+            if (joined.isEmpty()) {
+                return "Cannot Print.";
+            }
+            return "Cannot Print: " + joined;
+        } catch (Exception e) {
+            return context.getString(R.string.disconnect);
         }
     }
 
