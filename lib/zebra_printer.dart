@@ -111,7 +111,7 @@ class ZebraPrinter {
       return;
     }
     controller.selectedAddress = address;
-    channel.invokeMethod("connectToPrinter", {"Address": address});
+    return channel.invokeMethod("connectToPrinter", {"Address": address});
   }
 
   Future<void> connectToGenericPrinter(String address) async {
@@ -164,6 +164,7 @@ class ZebraPrinter {
       final newPrinter = ZebraDevice(
         address: methodCall.arguments["Address"],
         status: methodCall.arguments["Status"],
+        statusEnum: zebraStatusFromStrings(methodCall.arguments["Status"]),
         name: methodCall.arguments["Name"],
         isWifi: methodCall.arguments["IsWifi"] == "true",
       );
@@ -230,6 +231,8 @@ class ZebraController extends ChangeNotifier {
           _printers.indexWhere((element) => element.address == selectedAddress);
       _printers[index] = _printers[index].copyWith(
           status: status,
+          statusEnum: zebraStatusFromStrings(status,
+              color: color, isConnected: printers[index].address == selectedAddress),
           color: newColor,
           isConnected: printers[index].address == selectedAddress);
       notifyListeners();
@@ -246,7 +249,10 @@ class ZebraController extends ChangeNotifier {
     }
     if (_printers[index].isConnected) return;
     _printers[index] = _printers[index].copyWith(
-        status: connectedString, color: Colors.green, isConnected: true);
+        status: connectedString,
+        statusEnum: ZebraStatus.connected,
+        color: Colors.green,
+        isConnected: true);
     notifyListeners();
   }
 }
