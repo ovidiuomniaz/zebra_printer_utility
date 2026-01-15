@@ -125,6 +125,46 @@ For disconnect from printer, use `disconnect` method. For battery saver, disconn
   zebraPrinter.disconnect();
 ```
 
+## Device Status Enum
+Starting from `1.4.43`, each discovered/connected `ZebraDevice` also exposes a normalized enum status via `statusEnum` in addition to the raw `status` string.
+
+- Enum: `ZebraStatus { connected, disconnected, connecting, disconnecting, sendingData, done, portInvalid, unknown }`
+- Purpose: Provides a stable, non-localized status value (Android strings may be localized, e.g., Spanish).
+- Serialization: `toJson()` includes `statusEnum` (as its `.name`).
+
+Example usage when listing devices:
+```dart
+ListenableBuilder(
+  listenable: zebraPrinter.controller,
+  builder: (context, child) {
+    final printers = zebraPrinter.controller.printers;
+    if (printers.isEmpty) return _getNotAvailablePage();
+    return ListView.builder(
+      itemCount: printers.length,
+      itemBuilder: (context, index) {
+        final device = printers[index];
+        switch (device.statusEnum) {
+          case ZebraStatus.connected:
+            // show connected UI
+            break;
+          case ZebraStatus.connecting:
+            // show progress
+            break;
+          case ZebraStatus.disconnected:
+          default:
+            // show idle/disconnected
+            break;
+        }
+        return ListTile(
+          title: Text(device.name),
+          subtitle: Text('Status: \\${device.status} (\\${device.statusEnum.name})'),
+        );
+      },
+    );
+  },
+)
+```
+
 # P.S
 You need to be aware that once you are connected to a printer, it may not be detected by the scan. I recommend stopping the scan after successfully connecting to a printer until the issue is resolved.
 

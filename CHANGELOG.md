@@ -46,3 +46,8 @@ Applied coding best practices, including proper resource management and context 
 ## 1.4.42
 * Fix error in Printer class, devices were duplicated.
 * Persist printer connected.
+
+## 1.4.43
+* Add `ZebraStatus` enum and `statusEnum` field to `ZebraDevice`.
+* Normalize native status strings (iOS/Android, localized) into enum.
+* Update controller to keep `status` and `statusEnum` in sync.
