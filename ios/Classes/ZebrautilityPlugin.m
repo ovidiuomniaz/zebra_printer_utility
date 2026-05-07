@@ -1,4 +1,4 @@
-#import "ZebraUtilPlugin.h"
+#import "ZebrautilityPlugin.h"
 #import "TcpPrinterConnection.h"
 #if __has_include(<zebrautil/zebrautil-Swift.h>)
 #import <zebrautil/zebrautil-Swift.h>

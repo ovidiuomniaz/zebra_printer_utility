@@ -26,7 +26,7 @@ class Printer{
     var selectedIPAddress: String? = nil
     var selectedMacAddress: String? = nil
     var isZebraPrinter :Bool = true
-    var wifiManager: POSWIFIManager?
+    var wifiManager: GenericPrinterClient?
     var isConnecting :Bool = false
     
     static func getInstance(binaryMessenger : FlutterBinaryMessenger) -> Printer {
@@ -110,23 +110,21 @@ class Printer{
                 return self.disconnectedStr
             }
         }
-        guard let conn = self.connection, conn.isConnected() else {
+        guard let conn = self.connection as? (ZebraPrinterConnection & NSObjectProtocol),
+              conn.isConnected() else {
             return self.disconnectedStr
         }
-        var error: NSError?
-        if let printer = ZebraPrinterFactory.getInstance(conn, error: &error) {
-            if let ps = printer.getCurrentStatus(&error) {
-                if ps.isReadyToPrint {
-                    return "Ready To Print"
-                } else {
-                    let statusMessage = PrinterStatusMessages(printerStatus: ps)
-                    let messages = statusMessage?.getStatusMessage() as? [String] ?? []
-                    let joined = messages.joined(separator: ";")
-                    return joined.isEmpty ? "Cannot Print." : "Cannot Print: \(joined)"
-                }
-            }
+        guard let printer = try? ZebraPrinterFactory.getInstance(conn) as? ZebraPrinter,
+              let ps = try? printer.getCurrentStatus() else {
+            return self.disconnectedStr
         }
-        return self.disconnectedStr
+        if ps.isReadyToPrint {
+            return "Ready To Print"
+        }
+        let statusMessage = PrinterStatusMessages(printerStatus: ps)
+        let messages = statusMessage?.getStatusMessage() as? [String] ?? []
+        let joined = messages.joined(separator: ";")
+        return joined.isEmpty ? "Cannot Print." : "Cannot Print: \(joined)"
     }
 
     func toString() -> String{
@@ -141,7 +139,7 @@ class Printer{
                  setStatus(message: disconnectedStr, color: disconnectedColor)
                  setStatus(message: connectingStr, color: connectingColor)
         }
-        self.wifiManager = POSWIFIManager()
+        self.wifiManager = GenericPrinterClient()
         self.wifiManager?.posConnect(withHost: address, port: 9100, completion: { (result) in
             if result == true {
                 self.setStatus(message: self.connectedStr, color: self.connectedColor)

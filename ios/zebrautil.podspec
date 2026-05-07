@@ -5,28 +5,32 @@
 Pod::Spec.new do |s|
   s.name             = 'zebrautil'
   s.version          = '0.0.1'
-  s.summary          = 'A flutter plugin for working with zebra printers'
+  s.summary          = 'A Flutter plugin for working with Zebra label printers (Bluetooth/MFi/Wi-Fi).'
   s.description      = <<-DESC
-A flutter plugin for working with zebra printers
+A Flutter plugin for discovering and printing to Zebra label printers
+over Bluetooth (MFi) and Wi-Fi (TCP), with helpers for ZPL/CPCL.
                        DESC
-  s.homepage         = 'http://example.com'
+  s.homepage         = 'https://github.com/ovidiuomniaz/zebra_printer_utility'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Anthony Rubio' => 'rubionn27@gmail.com' }
+  s.author           = { 'ovidiuomniaz' => 'ovidiu@omniaz.io' }
   s.source           = { :path => '.' }
   s.source_files = 'Classes/**/*'
   s.dependency 'Flutter'
-  s.platform = :ios, '8.0'
+  s.dependency 'CocoaAsyncSocket', '~> 7.6'
+  s.platform = :ios, '13.0'
 
-  
-#  s.source_files = 'Classes//*{.h,.a,.swift,.mm,.m,.hpp}'
-#  s.resources = 'Resources//'
   s.static_framework = true
-  
-  # Flutter.framework does not contain a i386 slice. Only x86_64 simulators are supported.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'VALID_ARCHS[sdk=iphonesimulator*]' => 'x86_64' }
+
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
   s.swift_version = '5.0'
-  s.preserve_paths = 'libZSDK_API.a', 'ExternalAccessory.framework', 'QuartzCore.framework'
-   s.xcconfig = { 'OTHER_LDFLAGS' => '-framework ExternalAccessory -framework QuartzCore -lZSDK_API' }
-   s.vendored_libraries = 'libZSDK_API'
-   s.vendored_frameworks = 'ExternalAccessory.framework', 'QuartzCore.framework'
+
+  # System frameworks linked from the iOS SDK (no longer vendored as header stubs).
+  s.frameworks = 'ExternalAccessory', 'QuartzCore'
+
+  # Zebra Link-OS Multiplatform SDK static archive.
+  # Vendored because Zebra distributes the iOS SDK only via their developer
+  # portal (not CocoaPods/SPM). SHA-256 recorded in docs/VENDORED.md.
+  s.preserve_paths = 'libZSDK_API.a'
+  s.xcconfig = { 'OTHER_LDFLAGS' => '-lZSDK_API' }
+  s.vendored_libraries = 'libZSDK_API.a'
 end
