@@ -159,36 +159,41 @@ public class Printer implements MethodChannel.MethodCallHandler {
     }
 
     private void checkPermission(Context context, final MethodChannel.Result result) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (context.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                binding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
-                    @Override
-                    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-                        if (requestCode == ACCESS_COARSE_LOCATION_REQUEST_CODE) {
-                            if (grantResults.length > 0)
-                                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                                    try {
-                                        result.success(true);
-                                        return false;
-                                    } catch (Exception e) {
-                                        return false;
-                                    }
-                                }
-                        }
-                        result.success(false);
-                        return false;
-                    }
-                });
-                ((Activity) context).requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION
-                      },
-                        ACCESS_COARSE_LOCATION_REQUEST_CODE);
-
-            } else {
-                result.success(true);
-            }
-        } else {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            // Android 5: permissions granted at install time.
             result.success(true);
+            return;
         }
+
+        // Android 12+ uses BLUETOOTH_SCAN (with neverForLocation flag in the
+        // manifest); Android 6-11 uses ACCESS_FINE_LOCATION for BLE discovery.
+        final String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                ? android.Manifest.permission.BLUETOOTH_SCAN
+                : android.Manifest.permission.ACCESS_FINE_LOCATION;
+
+        if (context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+            result.success(true);
+            return;
+        }
+
+        binding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
+            @Override
+            public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                if (requestCode != ACCESS_COARSE_LOCATION_REQUEST_CODE) {
+                    return false;
+                }
+                boolean granted = grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+                try {
+                    result.success(granted);
+                } catch (Exception ignored) {
+                    // Result already responded to (e.g., user re-prompted); ignore.
+                }
+                return true;
+            }
+        });
+        ((Activity) context).requestPermissions(new String[]{permission},
+                ACCESS_COARSE_LOCATION_REQUEST_CODE);
     }
 
 

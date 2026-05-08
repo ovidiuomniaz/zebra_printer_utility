@@ -28,13 +28,11 @@ android {
 }
 ```
 
-Include the necessary permission in the Android Manifest.
-```sh
-    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
-    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-```
+### Permissions
+
+The plugin's manifest already declares every Bluetooth/location permission needed for printer discovery, with proper API-level caps and the `neverForLocation` flag on `BLUETOOTH_SCAN`. **You do not need to add these in your host app's manifest** — Android merges the plugin manifest at build time.
+
+If you copy them into your host manifest anyway (for explicit visibility), keep the `android:usesPermissionFlags="neverForLocation"` flag on `BLUETOOTH_SCAN`, otherwise Google Play will assume your app derives user location from BLE scan results.
 
 ## iOS
 Add `Supported external accessory protocols` in your `info.plist` and then add `com.zebra.rawport`to its.
