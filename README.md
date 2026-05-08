@@ -187,6 +187,15 @@ ListenableBuilder(
 )
 ```
 
+# Security
+
+This plugin connects to printers over **cleartext** Bluetooth and TCP — Zebra ZPL/CPCL is unauthenticated by design. Treat the LAN as the security boundary:
+
+- Run printers on an isolated VLAN / Wi-Fi SSID.
+- **Validate any ZPL that comes from untrusted input** before passing it to `print(...)` — ZPL can permanently reconfigure the printer (calibration, network settings, persistent state).
+
+Full threat model and disclosure process: see [`SECURITY.md`](SECURITY.md). Inventory of vendored binaries with SHA-256s and CVE notes: [`docs/VENDORED.md`](docs/VENDORED.md). Audit and remediation plan: [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md).
+
 # P.S
 You need to be aware that once you are connected to a printer, it may not be detected by the scan. I recommend stopping the scan after successfully connecting to a printer until the issue is resolved.
 

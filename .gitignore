@@ -9,3 +9,8 @@ example/android
 example/ios
 example/test
 
+# IDE / editor
+.idea/
+.vscode/
+*.iml
+
