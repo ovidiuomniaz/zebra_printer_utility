@@ -38,11 +38,13 @@ ZebraStatus zebraStatusFromStrings(String? status,
     // Generic error state; surface as disconnected for lack of finer granularity
     return ZebraStatus.disconnected;
   }
-  if (s.contains('connected') || s.contains('conectado')) {
-    return ZebraStatus.connected;
-  }
+  // Order matters: 'disconnected' contains 'connected' as a substring, so
+  // the disconnected check has to run first. Same for the Spanish pair.
   if (s.contains('disconnected') || s.contains('desconectado')) {
     return ZebraStatus.disconnected;
+  }
+  if (s.contains('connected') || s.contains('conectado')) {
+    return ZebraStatus.connected;
   }
   if (s.contains('done') || s.contains('completado')) return ZebraStatus.done;
 

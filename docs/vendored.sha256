@@ -1,0 +1,17 @@
+# Machine-readable SHA-256 manifest for vendored binaries.
+# Run from the repo root:  shasum -a 256 -c docs/vendored.sha256
+# Update this file in lockstep with docs/VENDORED.md whenever a vendored
+# binary is added, replaced, or removed. CI gates on this.
+
+85314d15e3f66ae2bdf72bbaf470473078be8d16d08f98d860b4588078b5e067  android/libs/ZSDK_ANDROID_API.jar
+d0eef10544e4c81de0aad17cc2a6275438a04ee651c057fd0549736a21f23d68  android/libs/jackson-databind-2.2.3.jar
+a74fa96e1ca00c47c185b2a78ed935a9e8b2e8ebb2691ef71494190dc4332b5a  android/libs/jackson-core-2.2.3.jar
+106c9188f1c7fc77754e169672041e9a7db2c7844b1ad1d5d22807611e1399e1  android/libs/jackson-annotations-2.2.3.jar
+5a172c9536eff1115eff2eae1ac3b7aa616a8b532994d12d1a06ad5fd7366d65  android/libs/httpcore-4.3.1.jar
+b8ac0a04db70fecbd5f22d265743485fe32f6c6291aa82bcc669d0e1aa26e9c2  android/libs/httpmime-4.3.2.jar
+34a58d6d80a50748307e674ec27b4411e6536fd12e78bec428eb2ee49a123007  android/libs/commons-net-3.1.jar
+734c8356420cc8e30c795d64fd1fcd5d44ea9d90342a2cc3262c5158fbc6d98b  android/libs/commons-lang3-3.4.jar
+50cee086060f86238c51f83900299552f76f8054e38c34557c7139b7e27a6c54  android/libs/commons-validator-1.4.0.jar
+168fd9ae011cefccfaa2aaaab9daa731d94057a766c0d49f2705bd0d1ff7fab8  android/libs/opencsv-2.2.jar
+a63cd9a4cafcd70a1b29b292e41c1c042f1d8dd5a5fb4c0af3524ea38a7a151c  android/libs/snmp6_1z.jar
+297e334a1415e11f064ea72d27350e1f85d83e95cc16c219098c93758c8be98d  ios/libZSDK_API.a
