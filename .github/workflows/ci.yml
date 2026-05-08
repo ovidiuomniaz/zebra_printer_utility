@@ -32,7 +32,7 @@ jobs:
       - run: flutter test --no-pub --reporter expanded
 
   android-build:
-    name: android plugin build
+    name: android plugin compile (via example app)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,29 +44,24 @@ jobs:
         with:
           flutter-version: '3.32.x'
           channel: stable
-      - name: Pub get
+      - name: Pub get (plugin)
         run: flutter pub get
-      - name: Pub get (example)
+      - name: Scaffold example app's android/ wrapper
         working-directory: example
-        run: flutter pub get
-      - name: Compile plugin Java sources
+        # The example/ folder ships only Dart sources. flutter create with
+        # --platforms=android adds the missing Android wrapper without
+        # touching lib/ or pubspec.yaml — gives us a real host app to drive
+        # AGP, generate R.java, and resolve androidx.* from Maven.
         run: |
-          # The plugin module on its own does not bootstrap a Gradle wrapper,
-          # so compile the Java sources directly against the bundled JARs +
-          # the Android & Flutter SDK jars. This catches regressions in
-          # Printer.java / BluetoothDiscoverer.java without needing a host app.
-          set -euo pipefail
-          ANDROID_JAR="$ANDROID_HOME/platforms/android-34/android.jar"
-          FLUTTER_JAR="$(dirname $(which flutter))/cache/artifacts/engine/android-arm/flutter.jar"
-          if [ ! -f "$ANDROID_JAR" ]; then
-            sdkmanager "platforms;android-34" >/dev/null
-          fi
-          mkdir -p build/classes
-          javac \
-            -source 17 -target 17 \
-            -cp "$ANDROID_JAR:$FLUTTER_JAR:android/libs/*" \
-            -d build/classes \
-            android/src/main/java/com/rubdev/zebrautil/*.java
+          flutter create --platforms=android --org=com.rubdev .
+          flutter pub get
+      - name: Compile plugin via example app
+        working-directory: example/android
+        # compileDebugJavaWithJavac runs the full Java compile (plugin
+        # included as a path dep) but stops before packaging — sidesteps
+        # the META-INF dup conflicts from the bundled JARs while still
+        # catching every real regression in the plugin's Java/Manifest.
+        run: ./gradlew :app:compileDebugJavaWithJavac --no-daemon
 
   vendored-sha:
     name: vendored binary SHA-256 verify
