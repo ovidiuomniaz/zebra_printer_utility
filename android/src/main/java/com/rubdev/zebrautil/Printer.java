@@ -1,9 +1,7 @@
 package com.rubdev.zebrautil;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -15,7 +13,6 @@ import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.location.LocationManager;
 import android.os.Build;
-import android.os.Looper;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
@@ -32,8 +29,9 @@ import com.zebra.sdk.printer.discovery.DiscoveredPrinter;
 import com.zebra.sdk.printer.discovery.NetworkDiscoverer;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Objects;
+import java.util.Map;
 
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.BinaryMessenger;
@@ -47,6 +45,22 @@ public class Printer implements MethodChannel.MethodCallHandler {
     private static final int ON_DISCOVERY_ERROR_GENERAL = -1;
     private static final int ON_DISCOVERY_ERROR_BLUETOOTH = -2;
     private static final int ON_DISCOVERY_ERROR_LOCATION = -3;
+    private static final int MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+
+    private static final Map<String, Integer> LOCALE_KEYS;
+    static {
+        HashMap<String, Integer> m = new HashMap<>();
+        m.put("connected", R.string.connected);
+        m.put("disconnect", R.string.disconnect);
+        m.put("connecting", R.string.connecting);
+        m.put("disconnecting", R.string.disconnecting);
+        m.put("done", R.string.done);
+        m.put("sending_data", R.string.sending_data);
+        m.put("scanning", R.string.scanning);
+        m.put("stopping_scan", R.string.stopping_scan);
+        LOCALE_KEYS = Collections.unmodifiableMap(m);
+    }
+
     private Connection printerConnection;
     private ZebraPrinter printer;
     private Context context;
@@ -55,8 +69,8 @@ public class Printer implements MethodChannel.MethodCallHandler {
     private String selectedAddress = null;
     private String macAddress = null;
     private boolean tempIsPrinterConnect;
-    private static ArrayList<DiscoveredPrinter> discoveredPrinters = new ArrayList<>();
-    private static ArrayList<DiscoveredPrinter> sendedDiscoveredPrinters = new ArrayList<>();
+    private final ArrayList<DiscoveredPrinter> discoveredPrinters = new ArrayList<>();
+    private final ArrayList<DiscoveredPrinter> sentDiscoveredPrinters = new ArrayList<>();
     private boolean isZebraPrinter = true;
     private Socketmanager socketmanager;
 
@@ -69,37 +83,36 @@ public class Printer implements MethodChannel.MethodCallHandler {
     }
 
 
-    public static void startScanning(final Context context, final MethodChannel methodChannel) {
+    public void startScanning() {
 
         try {
-            sendedDiscoveredPrinters.clear();
-            for (DiscoveredPrinter dp :
-                    discoveredPrinters) {
-                addNewDiscoverPrinter(dp, context, methodChannel);
+            sentDiscoveredPrinters.clear();
+            for (DiscoveredPrinter dp : discoveredPrinters) {
+                addNewDiscoverPrinter(dp);
             }
             BluetoothDiscoverer.findPrinters(context, new DiscoveryHandlerCustom() {
                 @Override
                 public void foundPrinter(final DiscoveredPrinter discoveredPrinter) {
                     discoveredPrinters.add(discoveredPrinter);
-                    ((Activity) context).runOnUiThread(() -> addNewDiscoverPrinter(discoveredPrinter, context, methodChannel));
+                    ((Activity) context).runOnUiThread(() -> addNewDiscoverPrinter(discoveredPrinter));
                 }
 
                 @Override
                 public void printerOutOfRange(DiscoveredPrinter discoverPrinter) {
-                    removeDiscoverPrinter(discoverPrinter,context,methodChannel);
+                    removeDiscoverPrinter(discoverPrinter);
                 }
 
                 @Override
                 public void discoveryFinished() {
-                    onDiscoveryDone(context, methodChannel);
+                    onDiscoveryDone();
                 }
 
                 @Override
                 public void discoveryError(String s) {
-                    if(s.contains("Bluetooth radio is currently disabled"))
-                        onDiscoveryError(context, methodChannel, ON_DISCOVERY_ERROR_BLUETOOTH, s);
+                    if (s.contains("Bluetooth radio is currently disabled"))
+                        onDiscoveryError(ON_DISCOVERY_ERROR_BLUETOOTH, s);
                     else
-                        onDiscoveryError(context, methodChannel, ON_DISCOVERY_ERROR_GENERAL, s);
+                        onDiscoveryError(ON_DISCOVERY_ERROR_GENERAL, s);
                 }
             });
 
@@ -107,22 +120,22 @@ public class Printer implements MethodChannel.MethodCallHandler {
             NetworkDiscoverer.findPrinters(new DiscoveryHandlerCustom() {
                 @Override
                 public void foundPrinter(DiscoveredPrinter discoveredPrinter) {
-                    addNewDiscoverPrinter(discoveredPrinter, context, methodChannel);
+                    addNewDiscoverPrinter(discoveredPrinter);
                 }
 
                 @Override
                 public void printerOutOfRange(DiscoveredPrinter discoverPrinter) {
-                    removeDiscoverPrinter(discoverPrinter,context,methodChannel);
+                    removeDiscoverPrinter(discoverPrinter);
                 }
 
                 @Override
                 public void discoveryFinished() {
-                    onDiscoveryDone(context, methodChannel);
+                    onDiscoveryDone();
                 }
 
                 @Override
                 public void discoveryError(String s) {
-                    onDiscoveryError(context, methodChannel, ON_DISCOVERY_ERROR_GENERAL, s);
+                    onDiscoveryError(ON_DISCOVERY_ERROR_GENERAL, s);
                 }
             });
         } catch (Exception e) {
@@ -130,7 +143,7 @@ public class Printer implements MethodChannel.MethodCallHandler {
         }
     }
 
-    private static void onDiscoveryError(Context context, final MethodChannel methodChannel, final int errorCode, final String errorText) {
+    private void onDiscoveryError(final int errorCode, final String errorText) {
         ((Activity) context).runOnUiThread(() -> {
             HashMap<String, Object> arguments = new HashMap<>();
             arguments.put("ErrorCode", errorCode);
@@ -140,7 +153,7 @@ public class Printer implements MethodChannel.MethodCallHandler {
 
     }
 
-    private static void onDiscoveryDone(Context context,final MethodChannel methodChannel){
+    private void onDiscoveryDone() {
         ((Activity) context).runOnUiThread(() -> methodChannel.invokeMethod("onDiscoveryDone",
                 context.getResources().getString(R.string.done)));
     }
@@ -179,9 +192,8 @@ public class Printer implements MethodChannel.MethodCallHandler {
     }
 
 
-    private static void addPrinterToDiscoveryPrinterList(DiscoveredPrinter discoveredPrinter) {
-        for (DiscoveredPrinter dp :
-                discoveredPrinters) {
+    private void addPrinterToDiscoveryPrinterList(DiscoveredPrinter discoveredPrinter) {
+        for (DiscoveredPrinter dp : discoveredPrinters) {
             if (dp.address.equals(discoveredPrinter.address))
                 return;
         }
@@ -189,20 +201,19 @@ public class Printer implements MethodChannel.MethodCallHandler {
         discoveredPrinters.add(discoveredPrinter);
     }
 
-    private static void removePrinterToDiscoveryPrinterList(DiscoveredPrinter discoveredPrinter){
+    private void removePrinterToDiscoveryPrinterList(DiscoveredPrinter discoveredPrinter) {
         discoveredPrinters.remove(discoveredPrinter);
     }
 
 
-    private static void addNewDiscoverPrinter(final DiscoveredPrinter discoveredPrinter, Context context, final MethodChannel methodChannel) {
+    private void addNewDiscoverPrinter(final DiscoveredPrinter discoveredPrinter) {
         addPrinterToDiscoveryPrinterList(discoveredPrinter);
         ((Activity) context).runOnUiThread(() -> {
-            for (DiscoveredPrinter dp :
-                    sendedDiscoveredPrinters) {
+            for (DiscoveredPrinter dp : sentDiscoveredPrinters) {
                 if (dp.address.equals(discoveredPrinter.address))
                     return;
             }
-            sendedDiscoveredPrinters.add(discoveredPrinter);
+            sentDiscoveredPrinters.add(discoveredPrinter);
             HashMap<String, Object> arguments = new HashMap<>();
 
             arguments.put("Address", discoveredPrinter.address);
@@ -210,37 +221,31 @@ public class Printer implements MethodChannel.MethodCallHandler {
             if (discoveredPrinter.getDiscoveryDataMap().get("SYSTEM_NAME") != null) {
                 arguments.put("Name", discoveredPrinter.getDiscoveryDataMap().get("SYSTEM_NAME"));
                 arguments.put("IsWifi", true);
-                methodChannel.invokeMethod("printerFound"
-                        , arguments);
+                methodChannel.invokeMethod("printerFound", arguments);
             } else {
                 arguments.put("Name", discoveredPrinter.getDiscoveryDataMap().get("FRIENDLY_NAME"));
                 arguments.put("IsWifi", false);
-                methodChannel.invokeMethod("printerFound"
-                        , arguments);
+                methodChannel.invokeMethod("printerFound", arguments);
             }
         });
     }
 
-    private static void removeDiscoverPrinter(final DiscoveredPrinter discoveredPrinter, Context context,final MethodChannel methodChannel){
+    private void removeDiscoverPrinter(final DiscoveredPrinter discoveredPrinter) {
 
         removePrinterToDiscoveryPrinterList(discoveredPrinter);
-    ((Activity) context).runOnUiThread(() -> {
+        ((Activity) context).runOnUiThread(() -> {
 
-        sendedDiscoveredPrinters.remove(discoveredPrinter);
-        HashMap<String, Object> arguments = new HashMap<>();
-        arguments.put("Address", discoveredPrinter.address);
-        methodChannel.invokeMethod("printerRemoved", arguments);
-    });
+            sentDiscoveredPrinters.remove(discoveredPrinter);
+            HashMap<String, Object> arguments = new HashMap<>();
+            arguments.put("Address", discoveredPrinter.address);
+            methodChannel.invokeMethod("printerRemoved", arguments);
+        });
     }
 
 
     public void print(final String data) {
-        new Thread(() -> {
-            Looper.prepare();
-            doConnectionTest(data);
-            Looper.loop();
-            Objects.requireNonNull(Looper.myLooper()).quit();
-        }).start();
+        new Thread(() -> doConnectionTest(data),
+                "ZebraPrint-" + System.identityHashCode(this)).start();
     }
 
 
@@ -545,6 +550,12 @@ public class Printer implements MethodChannel.MethodCallHandler {
     private void convertBase64ImageToZPLString(String data, int rotation, MethodChannel.Result result) {
         try {
             byte[] decodedString = Base64.decode(data, Base64.DEFAULT);
+            if (decodedString.length > MAX_IMAGE_BYTES) {
+                result.error("IMAGE_TOO_LARGE",
+                        "Image exceeds " + MAX_IMAGE_BYTES + " bytes (got " + decodedString.length + ")",
+                        null);
+                return;
+            }
             Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
             result.success(Printer.getZplCode(decodedByte, false, rotation));
         } catch (Exception e) {
@@ -552,15 +563,36 @@ public class Printer implements MethodChannel.MethodCallHandler {
         }
     }
 
+    private static String requireString(MethodCall call, String key, MethodChannel.Result result) {
+        Object v = call.argument(key);
+        if (v == null) {
+            result.error("INVALID_ARGS", "Missing argument: " + key, null);
+            return null;
+        }
+        return v.toString();
+    }
+
     @Override
     public void onMethodCall(@NonNull final MethodCall call, @NonNull final MethodChannel.Result result) {
         if (call.method.equals("print")) {
-            print(call.argument("Data").toString());
+            String data = requireString(call, "Data", result);
+            if (data == null) return;
+            print(data);
         } else if (call.method.equals("checkPermission")) {
             checkPermission(context, result);
         } else if (call.method.equals("convertBase64ImageToZPLString")) {
-            convertBase64ImageToZPLString(call.argument("Data").toString()
-                    , Integer.valueOf(call.argument("rotation").toString()), result);
+            String data = requireString(call, "Data", result);
+            if (data == null) return;
+            String rotationArg = requireString(call, "rotation", result);
+            if (rotationArg == null) return;
+            int rotation;
+            try {
+                rotation = Integer.parseInt(rotationArg);
+            } catch (NumberFormatException e) {
+                result.error("INVALID_ARGS", "rotation must be an integer", null);
+                return;
+            }
+            convertBase64ImageToZPLString(data, rotation, result);
         } else if (call.method.equals("disconnect")) {
             new Thread(() -> {
                 disconnect();
@@ -570,28 +602,38 @@ public class Printer implements MethodChannel.MethodCallHandler {
             result.success(isPrinterConnect());
         } else if (call.method.equals("startScan")) {
             if (checkIsLocationNetworkProviderIsOn()) {
-                startScanning(context, methodChannel);
+                startScanning();
             } else {
-                onDiscoveryError(context, methodChannel, ON_DISCOVERY_ERROR_LOCATION, "Your location service is off.");
+                onDiscoveryError(ON_DISCOVERY_ERROR_LOCATION, "Your location service is off.");
             }
 
         } else if (call.method.equals("setMediaType")) {
-            String mediaType = call.argument("MediaType");
+            String mediaType = requireString(call, "MediaType", result);
+            if (mediaType == null) return;
             setMediaType(mediaType);
         } else if (call.method.equals("setSettings")) {
-            String settingCommand = call.argument("SettingCommand");
+            String settingCommand = requireString(call, "SettingCommand", result);
+            if (settingCommand == null) return;
             setSettings(settingCommand);
         } else if (call.method.equals("setDarkness")) {
-            int darkness = call.argument("Darkness");
-            setDarkness(darkness);
+            Object darknessArg = call.argument("Darkness");
+            if (!(darknessArg instanceof Integer)) {
+                result.error("INVALID_ARGS", "Darkness must be an integer", null);
+                return;
+            }
+            setDarkness((Integer) darknessArg);
         } else if (call.method.equals("connectToPrinter")) {
+            String address = requireString(call, "Address", result);
+            if (address == null) return;
             new Thread(() -> {
-                boolean ok = connectToSelectPrinter(call.argument("Address").toString());
+                boolean ok = connectToSelectPrinter(address);
                 ((Activity) context).runOnUiThread(() -> result.success(ok));
             }).start();
 
         } else if (call.method.equals("connectToGenericPrinter")) {
-            connectToGenericPrinter(call.argument("Address").toString());
+            String address = requireString(call, "Address", result);
+            if (address == null) return;
+            connectToGenericPrinter(address);
         } else if (call.method.equals("stopScan")) {
             stopScan();
         } else if (call.method.equals("getCurrentStatus")) {
@@ -599,11 +641,12 @@ public class Printer implements MethodChannel.MethodCallHandler {
                 String message = getCurrentStatusMessage();
                 ((Activity) context).runOnUiThread(() -> result.success(message));
             }).start();
-        } else if (call.method.equals("getLocateValue")){
-            String resourceKey = call.argument("ResourceKey");
-            @SuppressLint("DiscouragedApi") int resId = context.getResources().getIdentifier(resourceKey, "string", context.getPackageName());
-            result.success(resId == 0 ? "" : context.getString(resId));
-        }else {
+        } else if (call.method.equals("getLocateValue")) {
+            String resourceKey = requireString(call, "ResourceKey", result);
+            if (resourceKey == null) return;
+            Integer resId = LOCALE_KEYS.get(resourceKey);
+            result.success(resId == null ? "" : context.getString(resId));
+        } else {
             result.notImplemented();
         }
     }
