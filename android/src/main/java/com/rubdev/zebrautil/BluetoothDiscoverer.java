@@ -12,7 +12,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.zebra.sdk.printer.discovery.DeviceFilter;
 import com.zebra.sdk.printer.discovery.DiscoveredPrinterBluetooth;
 
 import java.util.HashMap;
@@ -24,40 +23,40 @@ public class BluetoothDiscoverer {
     private final DiscoveryHandlerCustom mDiscoveryHandler;
     BluetoothDiscoverer.BtReceiver btReceiver;
     BluetoothDiscoverer.BtRadioMonitor btMonitor;
-    private final DeviceFilter deviceFilter;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private volatile boolean isActive = false;
     private static BluetoothDiscoverer bluetoothDiscoverer;
 
-    private BluetoothDiscoverer(Context context, DiscoveryHandlerCustom handler, DeviceFilter filter) {
+    private BluetoothDiscoverer(Context context, DiscoveryHandlerCustom handler) {
         this.mContext = context.getApplicationContext();
-        this.deviceFilter = filter;
         this.mDiscoveryHandler = handler;
     }
 
-    public static void findPrinters(Context context, DiscoveryHandlerCustom handler, DeviceFilter filter) {
+    /**
+     * Start Bluetooth printer discovery. Filtering is done internally by
+     * {@code BtReceiver.isPrinterClass} (Bluetooth class == 1664). Earlier
+     * versions accepted a {@code DeviceFilter} parameter; the only consumer
+     * always passed {@code v -> true}, which made the filter a no-op
+     * shadowing the real one. Removed for clarity (L10).
+     */
+    public static void findPrinters(Context context, DiscoveryHandlerCustom handler) {
         BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
         if (adapter == null) {
             handler.discoveryError("No bluetooth radio found");
-        } else if (!adapter.isEnabled()) {
-            handler.discoveryError("Bluetooth radio is currently disabled");
-        } else {
-            if (adapter.isDiscovering()) {
-                adapter.cancelDiscovery();
-            }
-
-            if (bluetoothDiscoverer == null) {
-                bluetoothDiscoverer = new BluetoothDiscoverer(context.getApplicationContext(), handler, filter);
-            }
-            bluetoothDiscoverer.isActive = true;
-            bluetoothDiscoverer.doBluetoothDisco();
+            return;
         }
-
-    }
-
-    public static void findPrinters(Context context, DiscoveryHandlerCustom handler)  {
-        DeviceFilter filter = value -> true;
-        findPrinters(context, handler, filter);
+        if (!adapter.isEnabled()) {
+            handler.discoveryError("Bluetooth radio is currently disabled");
+            return;
+        }
+        if (adapter.isDiscovering()) {
+            adapter.cancelDiscovery();
+        }
+        if (bluetoothDiscoverer == null) {
+            bluetoothDiscoverer = new BluetoothDiscoverer(context.getApplicationContext(), handler);
+        }
+        bluetoothDiscoverer.isActive = true;
+        bluetoothDiscoverer.doBluetoothDisco();
     }
 
     private void unregisterTopLevelReceivers(Context context) {
@@ -178,13 +177,12 @@ public class BluetoothDiscoverer {
             if (device == null) {
                 return;
             }
-            if (this.isPrinterClass(device) && BluetoothDiscoverer.this.deviceFilter != null && BluetoothDiscoverer.this.deviceFilter.shouldAddPrinter(device)) {
-
+            if (this.isPrinterClass(device)) {
                 if (!this.foundDevices.containsKey(device)) {
-                    BluetoothDiscoverer.this.mDiscoveryHandler.foundPrinter(new DiscoveredPrinterBluetooth(device.getAddress(), device.getName()));
+                    BluetoothDiscoverer.this.mDiscoveryHandler.foundPrinter(
+                            new DiscoveredPrinterBluetooth(device.getAddress(), device.getName()));
                 }
-                Long foundAt = System.currentTimeMillis();
-                this.foundDevices.put(device, foundAt);
+                this.foundDevices.put(device, System.currentTimeMillis());
             }
 
         }

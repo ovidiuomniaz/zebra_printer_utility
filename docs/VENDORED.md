@@ -26,7 +26,19 @@ CI may use this file as the source of truth for SHA verification — re-introduc
 | `opencsv-2.2.jar` | 2.2 | https://repo1.maven.org/maven2/net/sf/opencsv/opencsv/2.2/ | `168fd9ae011cefccfaa2aaaab9daa731d94057a766c0d49f2705bd0d1ff7fab8` | Apache-2.0 | Transitively required by Zebra SDK (`au.com.bytecode.opencsv.CSVReader`, single ref). Very old. |
 | `snmp6_1z.jar` | unknown (custom build) | unknown | `a63cd9a4cafcd70a1b29b292e41c1c042f1d8dd5a5fb4c0af3524ea38a7a151c` | unknown | Transitively required by Zebra SDK for SNMP-based printer discovery (88 class refs). Provenance unclear — likely a re-package of [SNMP4J](https://www.snmp4j.org/) or a custom Zebra build. **License needs verification before redistribution.** |
 
-### Removed in this PR
+## iOS — `ios/`
+
+| File | Version | Source | SHA-256 | License | Reason |
+|---|---|---|---|---|---|
+| `ios/libZSDK_API.a` | unknown (Mach-O fat: armv7/i386/x86_64/arm64) | Zebra Developer Portal — https://developer.zebra.com → Link-OS Multiplatform SDK iOS | `297e334a1415e11f064ea72d27350e1f85d83e95cc16c219098c93758c8be98d` | Zebra Link-OS SDK License (proprietary; redistributable per SDK EULA) | Zebra does not publish the iOS Link-OS SDK to CocoaPods or SPM (only via their developer portal, login-walled). Plugin's primary iOS dep — provides `ZebraPrinterConnection`, `MfiBtPrinterConnection`, `TcpPrinterConnection`, `ZebraPrinterFactory`, etc. |
+
+⚠️ The `arm64` slice in this archive was built for iOS device, **not** iOS-simulator. There is no `arm64-apple-ios-simulator` slice. As a result, `pod lib lint` cannot pass on Apple Silicon hosts (real-device builds work; Intel-Mac simulator builds work). Cannot be fixed without Zebra publishing an updated `.a` or `.xcframework`.
+
+## CI verification
+
+`docs/vendored.sha256` is the machine-readable counterpart of this file (one line per binary, in `shasum -c` format). The CI workflow at `.github/workflows/ci.yml` runs `shasum -c docs/vendored.sha256` on every PR — re-introducing or modifying a binary without updating both files together fails the build.
+
+## Removed historically
 
 | File | Version | SHA-256 of original | Reason |
 |---|---|---|---|
