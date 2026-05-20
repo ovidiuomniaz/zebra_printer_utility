@@ -165,35 +165,69 @@ public class Printer implements MethodChannel.MethodCallHandler {
             return;
         }
 
-        // Android 12+ uses BLUETOOTH_SCAN (with neverForLocation flag in the
-        // manifest); Android 6-11 uses ACCESS_FINE_LOCATION for BLE discovery.
-        final String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-                ? android.Manifest.permission.BLUETOOTH_SCAN
-                : android.Manifest.permission.ACCESS_FINE_LOCATION;
-
-        if (context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
-            result.success(true);
-            return;
-        }
-
-        binding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
-            @Override
-            public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-                if (requestCode != ACCESS_COARSE_LOCATION_REQUEST_CODE) {
-                    return false;
-                }
-                boolean granted = grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-                try {
-                    result.success(granted);
-                } catch (Exception ignored) {
-                    // Result already responded to (e.g., user re-prompted); ignore.
-                }
-                return true;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ (API 31+): Bluetooth scanning requires BLUETOOTH_SCAN
+            // and BLUETOOTH_CONNECT. The app declares BLUETOOTH_SCAN with
+            // android:usesPermissionFlags="neverForLocation" so no location
+            // permission is needed.
+            boolean scanGranted = context.checkSelfPermission(
+                    android.Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED;
+            boolean connectGranted = context.checkSelfPermission(
+                    android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED;
+            if (scanGranted && connectGranted) {
+                result.success(true);
+                return;
             }
-        });
-        ((Activity) context).requestPermissions(new String[]{permission},
-                ACCESS_COARSE_LOCATION_REQUEST_CODE);
+            binding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
+                @Override
+                public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                    if (requestCode != ACCESS_COARSE_LOCATION_REQUEST_CODE) {
+                        return false;
+                    }
+                    boolean allGranted = grantResults.length >= 2
+                            && grantResults[0] == PackageManager.PERMISSION_GRANTED
+                            && grantResults[1] == PackageManager.PERMISSION_GRANTED;
+                    try {
+                        result.success(allGranted);
+                    } catch (Exception ignored) {
+                        // Result already responded to; ignore.
+                    }
+                    return true;
+                }
+            });
+            ((Activity) context).requestPermissions(
+                    new String[]{
+                            android.Manifest.permission.BLUETOOTH_SCAN,
+                            android.Manifest.permission.BLUETOOTH_CONNECT
+                    },
+                    ACCESS_COARSE_LOCATION_REQUEST_CODE);
+        } else {
+            // Android 6-11 (API 23-30): location permission is required for
+            // Bluetooth scanning.
+            final String permission = android.Manifest.permission.ACCESS_FINE_LOCATION;
+            if (context.checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED) {
+                result.success(true);
+                return;
+            }
+            binding.addRequestPermissionsResultListener(new PluginRegistry.RequestPermissionsResultListener() {
+                @Override
+                public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+                    if (requestCode != ACCESS_COARSE_LOCATION_REQUEST_CODE) {
+                        return false;
+                    }
+                    boolean granted = grantResults.length > 0
+                            && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+                    try {
+                        result.success(granted);
+                    } catch (Exception ignored) {
+                        // Result already responded to; ignore.
+                    }
+                    return true;
+                }
+            });
+            ((Activity) context).requestPermissions(new String[]{permission},
+                    ACCESS_COARSE_LOCATION_REQUEST_CODE);
+        }
     }
 
 
@@ -606,7 +640,9 @@ public class Printer implements MethodChannel.MethodCallHandler {
         } else if (call.method.equals("isPrinterConnected")) {
             result.success(isPrinterConnect());
         } else if (call.method.equals("startScan")) {
-            if (checkIsLocationNetworkProviderIsOn()) {
+            // Android 12+ (API 31+) with BLUETOOTH_SCAN neverForLocation does
+            // not require the Location Service to be on.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S || checkIsLocationNetworkProviderIsOn()) {
                 startScanning();
             } else {
                 onDiscoveryError(ON_DISCOVERY_ERROR_LOCATION, "Your location service is off.");
